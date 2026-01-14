@@ -1,0 +1,375 @@
+
+
+<!doctype html>  
+
+<html>  
+
+<head>  
+
+<meta charset="utf-8"/>  
+
+<meta name="viewport" content="width=device-width,initial-scale=1"/>  
+
+<title>DeepSeek Corrector V8 — Clean Format Output</title>  
+
+<style>  
+
+  body{font-family:Arial,system-ui;max-width:960px;margin:10px auto;padding:12px}  
+
+  #log{white-space:pre-wrap;background:#0b1220;color:#e6ffd9;padding:10px;border-radius:6px;height:65vh;overflow:auto;font-size:13px}  
+
+  button{padding:8px 12px;margin-right:6px;border-radius:5px;border:1px solid #999}  
+
+</style>  
+
+</head>  
+
+  
+
+<body>  
+
+<h2>DeepSeek Corrector V8 — Format Preserving Cleaner</h2>  
+
+  
+
+<label>Choose TXT File:    
+
+  <input id="fileInput" type="file" accept=".txt"/>  
+
+</label>  
+
+  
+
+<label>Chunk Size:    
+
+  <input id="chunkSize" type="number" value="2000"/>  
+
+</label>  
+
+  
+
+<label>Delay (ms):    
+
+  <input id="delay" type="number" value="1200"/>  
+
+</label>  
+
+  
+
+<button id="startBtn">Start</button>  
+
+<button id="stopBtn" disabled>Stop</button>  
+
+  
+
+<h3>Processing Log:</h3>  
+
+<div id="log">Log will appear...</div>  
+
+  
+
+<a id="downloadLink"></a>  
+
+  
+
+<script src="https://js.puter.com/v2/"></script>  
+
+  
+
+<script>  
+
+(function(){  
+
+  
+
+const fileInput = document.getElementById("fileInput");  
+
+const chunkSizeInput = document.getElementById("chunkSize");  
+
+const delayInput = document.getElementById("delay");  
+
+const startBtn = document.getElementById("startBtn");  
+
+const stopBtn = document.getElementById("stopBtn");  
+
+const logBox = document.getElementById("log");  
+
+const downloadLink = document.getElementById("downloadLink");  
+
+  
+
+let stopFlag = false;  
+
+let correctedChunks = [];  
+
+  
+
+function log(t){  
+
+  logBox.textContent += t + "\n\n";  
+
+  logBox.scrollTop = logBox.scrollHeight;  
+
+}  
+
+  
+
+function clean(t){  
+
+  return t.replace(/[^\S\r\n]{2,}/g," ").replace(/\u0000/g,"").trim();  
+
+}  
+
+  
+
+function splitChunks(text, max){  
+
+  let out = [];  
+
+  let pos = 0;  
+
+  while(pos < text.length){  
+
+    let end = pos + max;  
+
+  
+
+    if(end >= text.length){  
+
+      out.push(text.slice(pos));  
+
+      break;  
+
+    }  
+
+  
+
+    // try break on newline for clean split  
+
+    let cut = text.lastIndexOf("\n", end);  
+
+    if(cut <= pos) cut = end;  
+
+  
+
+    out.push(text.slice(pos, cut));  
+
+    pos = cut;  
+
+  }  
+
+  return out;  
+
+}  
+
+  
+
+async function sendToAI(content){  
+
+  let prompt = `  
+
+You are an expert text corrector.  
+
+  
+
+RULES:
+1. Fix the OCR errors in this Hindi text (e.g., change 'एोfतहासिक' to 'ऐतिहासिक').
+2. Maintain the one-liner format: [Question/Fact] — [Answer] [Exam Info].
+3. Exam dates, years, and shifts must remain on the SAME line.
+4. Remove "garbage" characters and non-Hindi symbols like 'Exूraम्ूाd' or 'Yण्ऊ'.
+5. Do NOT add or remove historical facts.
+6. Remove footers like page numbers or names (e.g., 'ashutosh shukla').
+7. Keep English technical terms like 'Shift', 'Stage', or 'NTPC' as they are.
+
+Chunk start:  
+
+${content}  
+
+Chunk end.  
+
+`;  
+
+  
+
+  try {  
+
+    let r = await puter.ai.chat(prompt, {model:"deepseek/deepseek-v3.2",max_tokens:2000});  
+
+    if(!r || !r.message || !r.message.content){  
+
+      throw new Error("NO_RESPONSE");  
+
+    }  
+
+    return String(r.message.content);  
+
+  }   
+
+  catch(e){  
+
+    return "AI_ERROR";  
+
+  }  
+
+}  
+
+  
+
+startBtn.onclick = async ()=>{  
+
+  const file = fileInput.files[0];  
+
+  if(!file){ alert("Choose TXT file"); return; }  
+
+  
+
+  startBtn.disabled = true;  
+
+  stopBtn.disabled = false;  
+
+  stopFlag = false;  
+
+  correctedChunks = [];  
+
+  logBox.textContent = "";  
+
+  
+
+  let raw = await file.text();  
+
+  raw = clean(raw);  
+
+  
+
+  let chunkSize = parseInt(chunkSizeInput.value) || 2000;  
+
+  let delay = parseInt(delayInput.value) || 1200;  
+
+  
+
+  let chunks = splitChunks(raw, chunkSize);  
+
+  
+
+  log("Total chunks: "+chunks.length);  
+
+  
+
+  for(let i=0;i<chunks.length;i++){  
+
+    if(stopFlag){ log("Stopped!"); break; }  
+
+  
+
+    let ch = chunks[i];  
+
+    log(`========== Processing chunk ${i+1} / ${chunks.length} ==========\n\n${ch}`);  
+
+  
+
+    let output = "";  
+
+    let success = false;  
+
+  
+
+    for(let a=1;a<=3;a++){  
+
+      log(`Attempt ${a} for chunk ${i+1}`);  
+
+      output = await sendToAI(ch);  
+
+  
+
+      if(output !== "AI_ERROR" && output.trim() !== ""){  
+
+        success = true;  
+
+        break;  
+
+      }  
+
+  
+
+      log("AI ERROR, retrying...");  
+
+      await new Promise(r=>setTimeout(r,1000));  
+
+    }  
+
+  
+
+    if(!success){  
+
+      output = `[FAILED chunk ${i+1} after 3 attempts]`;  
+
+    }  
+
+  
+
+    log("----- CORRECTED OUTPUT -----\n"+output);  
+
+  
+
+    correctedChunks.push(output);  
+
+  
+
+    await new Promise(r=>setTimeout(r, delay));  
+
+  }  
+
+  
+
+  log("Merging all chunks...");  
+
+  
+
+  let finalText = correctedChunks.join("\n\n");  
+
+  
+
+  const blob = new Blob([finalText],{type:"text/plain"});  
+
+  const url = URL.createObjectURL(blob);  
+
+  downloadLink.href = url;  
+
+  downloadLink.download = file.name.replace(".txt","")+"_corrected.txt";  
+
+  downloadLink.textContent = "Download Corrected File";  
+
+  
+
+  log("🎉 Processing complete!");  
+
+  startBtn.disabled = false;  
+
+  stopBtn.disabled = true;  
+
+};  
+
+  
+
+stopBtn.onclick = ()=>{  
+
+  stopFlag = true;  
+
+  stopBtn.disabled = true;  
+
+  log("STOP Requested.");  
+
+};  
+
+  
+
+})();  
+
+</script>  
+
+  
+
+</body>  
+
+</html>
+
