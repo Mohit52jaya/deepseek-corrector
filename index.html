@@ -1,176 +1,262 @@
-
-
-<!doctype html>  
-
-<html>  
-
-<head>  
-
-<meta charset="utf-8"/>  
-
-<meta name="viewport" content="width=device-width,initial-scale=1"/>  
-
-<title>DeepSeek Corrector V8 — Clean Format Output</title>  
-
-<style>  
-
-  body{font-family:Arial,system-ui;max-width:960px;margin:10px auto;padding:12px}  
-
-  #log{white-space:pre-wrap;background:#0b1220;color:#e6ffd9;padding:10px;border-radius:6px;height:65vh;overflow:auto;font-size:13px}  
-
-  button{padding:8px 12px;margin-right:6px;border-radius:5px;border:1px solid #999}  
-
-</style>  
-
-</head>  
-
-  
-
-<body>  
-
-<h2>DeepSeek Corrector V8 — Format Preserving Cleaner</h2>  
-
-  
-
-<label>Choose TXT File:    
-
-  <input id="fileInput" type="file" accept=".txt"/>  
-
-</label>  
-
-  
-
-<label>Chunk Size:    
-
-  <input id="chunkSize" type="number" value="2000"/>  
-
-</label>  
-
-  
-
-<label>Delay (ms):    
-
-  <input id="delay" type="number" value="1200"/>  
-
-</label>  
-
-  
-
-<button id="startBtn">Start</button>  
-
-<button id="stopBtn" disabled>Stop</button>  
-
-  
-
-<h3>Processing Log:</h3>  
-
-<div id="log">Log will appear...</div>  
-
-  
-
-<a id="downloadLink"></a>  
-
-  
-
-<script src="https://js.puter.com/v2/"></script>  
-
-  
-
-<script>  
-
-(function(){  
-
-  
-
-const fileInput = document.getElementById("fileInput");  
-
-const chunkSizeInput = document.getElementById("chunkSize");  
-
-const delayInput = document.getElementById("delay");  
-
-const startBtn = document.getElementById("startBtn");  
-
-const stopBtn = document.getElementById("stopBtn");  
-
-const logBox = document.getElementById("log");  
-
-const downloadLink = document.getElementById("downloadLink");  
-
-  
-
-let stopFlag = false;  
-
-let correctedChunks = [];  
-
-  
-
-function log(t){  
-
-  logBox.textContent += t + "\n\n";  
-
-  logBox.scrollTop = logBox.scrollHeight;  
-
-}  
-
-  
-
-function clean(t){  
-
-  return t.replace(/[^\S\r\n]{2,}/g," ").replace(/\u0000/g,"").trim();  
-
-}  
-
-  
-
-function splitChunks(text, max){  
-
-  let out = [];  
-
-  let pos = 0;  
-
-  while(pos < text.length){  
-
-    let end = pos + max;  
-
-  
-
-    if(end >= text.length){  
-
-      out.push(text.slice(pos));  
-
-      break;  
-
-    }  
-
-  
-
-    // try break on newline for clean split  
-
-    let cut = text.lastIndexOf("\n", end);  
-
-    if(cut <= pos) cut = end;  
-
-  
-
-    out.push(text.slice(pos, cut));  
-
-    pos = cut;  
-
-  }  
-
-  return out;  
-
-}  
-
-  
-
-async function sendToAI(content){  
-
-  let prompt = `  
-
-You are an expert text corrector.  
-
-  
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>DeepSeek Corrector V8 — Professional Cleaner</title>
+
+<style>
+:root{
+  --bg:#0f172a;
+  --card:#111827;
+  --accent:#22c55e;
+  --danger:#ef4444;
+  --text:#e5e7eb;
+  --muted:#9ca3af;
+  --border:#1f2937;
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  font-family:system-ui,Segoe UI,Arial;
+  background:linear-gradient(135deg,#020617,#020617);
+  color:var(--text);
+}
+
+.container{
+  max-width:1100px;
+  margin:auto;
+  padding:16px;
+}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:16px;
+  margin-bottom:16px;
+}
+
+h1{
+  font-size:22px;
+  margin:0 0 4px 0;
+}
+
+.subtitle{
+  color:var(--muted);
+  font-size:13px;
+}
+
+.controls{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:12px;
+  margin-top:12px;
+}
+
+label{
+  font-size:12px;
+  color:var(--muted);
+}
+
+input[type=file],
+input[type=number]{
+  width:100%;
+  padding:8px;
+  background:#020617;
+  border:1px solid var(--border);
+  border-radius:6px;
+  color:var(--text);
+}
+
+.actions{
+  display:flex;
+  gap:8px;
+  margin-top:14px;
+}
+
+button{
+  padding:10px 14px;
+  border-radius:8px;
+  border:1px solid var(--border);
+  background:#020617;
+  color:var(--text);
+  cursor:pointer;
+}
+
+button.primary{
+  background:var(--accent);
+  color:#052e16;
+  font-weight:600;
+}
+
+button.danger{
+  background:var(--danger);
+  color:white;
+}
+
+button:disabled{
+  opacity:.5;
+  cursor:not-allowed;
+}
+
+.progress-wrap{
+  margin-top:12px;
+}
+
+.progress{
+  height:10px;
+  width:100%;
+  background:#020617;
+  border-radius:999px;
+  overflow:hidden;
+  border:1px solid var(--border);
+}
+
+.progress > div{
+  height:100%;
+  width:0%;
+  background:linear-gradient(90deg,#22c55e,#4ade80);
+  transition:width .3s;
+}
+
+.status{
+  font-size:12px;
+  color:var(--muted);
+  margin-top:6px;
+}
+
+.log{
+  height:60vh;
+  overflow:auto;
+  background:#020617;
+  border-radius:10px;
+  border:1px solid var(--border);
+  padding:12px;
+  font-size:13px;
+  white-space:pre-wrap;
+  line-height:1.5;
+}
+
+.log .ok{color:#22c55e}
+.log .err{color:#ef4444}
+.log .info{color:#93c5fd}
+
+.download{
+  display:inline-block;
+  margin-top:10px;
+  color:#22c55e;
+  text-decoration:none;
+  font-weight:600;
+}
+
+footer{
+  text-align:center;
+  font-size:12px;
+  color:var(--muted);
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+  <div class="card">
+    <h1>DeepSeek Corrector V8</h1>
+    <div class="subtitle">Format-Preserving OCR Cleaner (Hindi + Exams)</div>
+
+    <div class="controls">
+      <div>
+        <label>TXT File</label>
+        <input id="fileInput" type="file" accept=".txt">
+      </div>
+      <div>
+        <label>Chunk Size</label>
+        <input id="chunkSize" type="number" value="2000">
+      </div>
+      <div>
+        <label>Delay (ms)</label>
+        <input id="delay" type="number" value="1200">
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="startBtn" class="primary">Start Processing</button>
+      <button id="stopBtn" class="danger" disabled>Stop</button>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress"><div id="bar"></div></div>
+      <div class="status" id="status">Idle</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Processing Log</h3>
+    <div id="log" class="log">Waiting for input...</div>
+    <a id="downloadLink" class="download"></a>
+  </div>
+
+  <footer>DeepSeek V3.2 • Reliable Chunk Processing</footer>
+
+</div>
+
+<script src="https://js.puter.com/v2/"></script>
+
+<script>
+(()=>{
+const $ = id=>document.getElementById(id);
+
+const fileInput = $("fileInput");
+const chunkSizeInput = $("chunkSize");
+const delayInput = $("delay");
+const startBtn = $("startBtn");
+const stopBtn = $("stopBtn");
+const logBox = $("log");
+const bar = $("bar");
+const status = $("status");
+const downloadLink = $("downloadLink");
+
+let stopFlag=false;
+let corrected=[];
+
+function log(msg,type="info"){
+  const span=document.createElement("div");
+  span.className=type;
+  span.textContent=msg;
+  logBox.appendChild(span);
+  logBox.scrollTop=logBox.scrollHeight;
+}
+
+function clean(text){
+  return text
+    .replace(/\u0000/g,"")
+    .replace(/[^\S\r\n]{2,}/g," ")
+    .trim();
+}
+
+function splitChunks(text,max){
+  let out=[],pos=0;
+  while(pos<text.length){
+    let end=pos+max;
+    if(end>=text.length){ out.push(text.slice(pos)); break; }
+    let cut=Math.max(
+      text.lastIndexOf("\n",end),
+      text.lastIndexOf("।",end),
+      text.lastIndexOf(".",end)
+    );
+    if(cut<=pos) cut=end;
+    out.push(text.slice(pos,cut));
+    pos=cut;
+  }
+  return out;
+}
+
+async function sendToAI(content){
+const prompt = `
+You are an expert text corrector.
 
 RULES:
 1. Fix the OCR errors in this Hindi text (e.g., change 'एोfतहासिक' to 'ऐतिहासिक').
@@ -182,535 +268,83 @@ RULES:
 7. Keep English technical terms like 'Shift', 'Stage', or 'NTPC' as they are.
 8. New question should start from next line and bullet dot at starting 
 9. mention heading and sub headings of subject 
-10. if question is incomplete then complete that question 
-
-Chunk start:  
-
-${content}  
-
-Chunk end.  
-
-`;  
-
-  
-
-  try {  
-
-    let r = await puter.ai.chat(prompt, {model:"deepseek/deepseek-v3.2",max_tokens:2000});  
-
-    if(!r || !r.message || !r.message.content){  
-
-      throw new Error("NO_RESPONSE");  
-
-    }  
-
-    return String(r.message.content);  
-
-  }   
-
-  catch(e){  
-
-    return "AI_ERROR";  
-
-  }  
-
-}  
-
-  
-
-startBtn.onclick = async ()=>{  
-
-  const file = fileInput.files[0];  
-
-  if(!file){ alert("Choose TXT file"); return; }  
-
-  
-
-  startBtn.disabled = true;  
-
-  stopBtn.disabled = false;  
-
-  stopFlag = false;  
-
-  correctedChunks = [];  
-
-  logBox.textContent = "";  
-
-  
-
-  let raw = await file.text();  
-
-  raw = clean(raw);  
-
-  
-
-  let chunkSize = parseInt(chunkSizeInput.value) || 2000;  
-
-  let delay = parseInt(delayInput.value) || 1200;  
-
-  
-
-  let chunks = splitChunks(raw, chunkSize);  
-
-  
-
-  log("Total chunks: "+chunks.length);  
-
-  
-
-  for(let i=0;i<chunks.length;i++){  
-
-    if(stopFlag){ log("Stopped!"); break; }  
-
-  
-
-    let ch = chunks[i];  
-
-    log(`========== Processing chunk ${i+1} / ${chunks.length} ==========\n\n${ch}`);  
-
-  
-
-    let output = "";  
-
-    let success = false;  
-
-  
-
-    for(let a=1;a<=3;a++){  
-
-      log(`Attempt ${a} for chunk ${i+1}`);  
-
-      output = await sendToAI(ch);  
-
-  
-
-      if(output !== "AI_ERROR" && output.trim() !== ""){  
-
-        success = true;  
-
-        break;  
-
-      }  
-
-  
-
-      log("AI ERROR, retrying...");  
-
-      await new Promise(r=>setTimeout(r,1000));  
-
-    }  
-
-  
-
-    if(!success){  
-
-      output = `[FAILED chunk ${i+1} after 3 attempts]`;  
-
-    }  
-
-  
-
-    log("----- CORRECTED OUTPUT -----\n"+output);  
-
-  
-
-    correctedChunks.push(output);  
-
-  
-
-    await new Promise(r=>setTimeout(r, delay));  
-
-  }  
-
-  
-
-  log("Merging all chunks...");  
-
-  
-
-  let finalText = correctedChunks.join("\n\n");  
-
-  
-
-  const blob = new Blob([finalText],{type:"text/plain"});  
-
-  const url = URL.createObjectURL(blob);  
-
-  downloadLink.href = url;  
-
-  downloadLink.download = file.name.replace(".txt","")+"_corrected.txt";  
-
-  downloadLink.textContent = "Download Corrected File";  
-
-  
-
-  log("🎉 Processing complete!");  
-
-  startBtn.disabled = false;  
-
-  stopBtn.disabled = true;  
-
-};  
-
-  
-
-stopBtn.onclick = ()=>{  
-
-  stopFlag = true;  
-
-  stopBtn.disabled = true;  
-
-  log("STOP Requested.");  
-
-};  
-
-  
-
-})();  
-
-</script>  
-
-  
-
-</body>  
-
-</html>
-  <input id="fileInput" type="file" accept=".txt"/>  
-
-</label>  
-
-  
-
-<label>Chunk Size:    
-
-  <input id="chunkSize" type="number" value="2000"/>  
-
-</label>  
-
-  
-
-<label>Delay (ms):    
-
-  <input id="delay" type="number" value="1200"/>  
-
-</label>  
-
-  
-
-<button id="startBtn">Start</button>  
-
-<button id="stopBtn" disabled>Stop</button>  
-
-  
-
-<h3>Processing Log:</h3>  
-
-<div id="log">Log will appear...</div>  
-
-  
-
-<a id="downloadLink"></a>  
-
-  
-
-<script src="https://js.puter.com/v2/"></script>  
-
-  
-
-<script>  
-
-(function(){  
-
-  
-
-const fileInput = document.getElementById("fileInput");  
-
-const chunkSizeInput = document.getElementById("chunkSize");  
-
-const delayInput = document.getElementById("delay");  
-
-const startBtn = document.getElementById("startBtn");  
-
-const stopBtn = document.getElementById("stopBtn");  
-
-const logBox = document.getElementById("log");  
-
-const downloadLink = document.getElementById("downloadLink");  
-
-  
-
-let stopFlag = false;  
-
-let correctedChunks = [];  
-
-  
-
-function log(t){  
-
-  logBox.textContent += t + "\n\n";  
-
-  logBox.scrollTop = logBox.scrollHeight;  
-
-}  
-
-  
-
-function clean(t){  
-
-  return t.replace(/[^\S\r\n]{2,}/g," ").replace(/\u0000/g,"").trim();  
-
-}  
-
-  
-
-function splitChunks(text, max){  
-
-  let out = [];  
-
-  let pos = 0;  
-
-  while(pos < text.length){  
-
-    let end = pos + max;  
-
-  
-
-    if(end >= text.length){  
-
-      out.push(text.slice(pos));  
-
-      break;  
-
-    }  
-
-  
-
-    // try break on newline for clean split  
-
-    let cut = text.lastIndexOf("\n", end);  
-
-    if(cut <= pos) cut = end;  
-
-  
-
-    out.push(text.slice(pos, cut));  
-
-    pos = cut;  
-
-  }  
-
-  return out;  
-
-}  
-
-  
-
-async function sendToAI(content){  
-
-  let prompt = `  
-
-You are an expert text corrector.  
-
-  
-
-RULES:
-1. Fix the OCR errors in this Hindi text (e.g., change 'एोfतहासिक' to 'ऐतिहासिक').
-2. Maintain the one-liner format: [Question/Fact] — [Answer] [Exam Info].
-3. Exam dates, years, and shifts must remain on the SAME line.
-4. Remove "garbage" characters and non-Hindi symbols like 'Exूraम्ूाd' or 'Yण्ऊ'.
-5. Do NOT add or remove historical facts.
-6. Remove footers like page numbers or names (e.g., 'ashutosh shukla').
-7. Keep English technical terms like 'Shift', 'Stage', or 'NTPC' as they are.
-
-Chunk start:  
-
-${content}  
-
-Chunk end.  
-
-`;  
-
-  
-
-  try {  
-
-    let r = await puter.ai.chat(prompt, {model:"deepseek/deepseek-v3.2",max_tokens:2000});  
-
-    if(!r || !r.message || !r.message.content){  
-
-      throw new Error("NO_RESPONSE");  
-
-    }  
-
-    return String(r.message.content);  
-
-  }   
-
-  catch(e){  
-
-    return "AI_ERROR";  
-
-  }  
-
-}  
-
-  
-
-startBtn.onclick = async ()=>{  
-
-  const file = fileInput.files[0];  
-
-  if(!file){ alert("Choose TXT file"); return; }  
-
-  
-
-  startBtn.disabled = true;  
-
-  stopBtn.disabled = false;  
-
-  stopFlag = false;  
-
-  correctedChunks = [];  
-
-  logBox.textContent = "";  
-
-  
-
-  let raw = await file.text();  
-
-  raw = clean(raw);  
-
-  
-
-  let chunkSize = parseInt(chunkSizeInput.value) || 2000;  
-
-  let delay = parseInt(delayInput.value) || 1200;  
-
-  
-
-  let chunks = splitChunks(raw, chunkSize);  
-
-  
-
-  log("Total chunks: "+chunks.length);  
-
-  
-
-  for(let i=0;i<chunks.length;i++){  
-
-    if(stopFlag){ log("Stopped!"); break; }  
-
-  
-
-    let ch = chunks[i];  
-
-    log(`========== Processing chunk ${i+1} / ${chunks.length} ==========\n\n${ch}`);  
-
-  
-
-    let output = "";  
-
-    let success = false;  
-
-  
-
-    for(let a=1;a<=3;a++){  
-
-      log(`Attempt ${a} for chunk ${i+1}`);  
-
-      output = await sendToAI(ch);  
-
-  
-
-      if(output !== "AI_ERROR" && output.trim() !== ""){  
-
-        success = true;  
-
-        break;  
-
-      }  
-
-  
-
-      log("AI ERROR, retrying...");  
-
-      await new Promise(r=>setTimeout(r,1000));  
-
-    }  
-
-  
-
-    if(!success){  
-
-      output = `[FAILED chunk ${i+1} after 3 attempts]`;  
-
-    }  
-
-  
-
-    log("----- CORRECTED OUTPUT -----\n"+output);  
-
-  
-
-    correctedChunks.push(output);  
-
-  
-
-    await new Promise(r=>setTimeout(r, delay));  
-
-  }  
-
-  
-
-  log("Merging all chunks...");  
-
-  
-
-  let finalText = correctedChunks.join("\n\n");  
-
-  
-
-  const blob = new Blob([finalText],{type:"text/plain"});  
-
-  const url = URL.createObjectURL(blob);  
-
-  downloadLink.href = url;  
-
-  downloadLink.download = file.name.replace(".txt","")+"_corrected.txt";  
-
-  downloadLink.textContent = "Download Corrected File";  
-
-  
-
-  log("🎉 Processing complete!");  
-
-  startBtn.disabled = false;  
-
-  stopBtn.disabled = true;  
-
-};  
-
-  
-
-stopBtn.onclick = ()=>{  
-
-  stopFlag = true;  
-
-  stopBtn.disabled = true;  
-
-  log("STOP Requested.");  
-
-};  
-
-  
-
-})();  
-
-</script>  
-
-  
-
-</body>  
-
+10. if question is incomplete then complete that question
+
+
+${content}
+`;
+try{
+  const r=await puter.ai.chat(prompt,{
+    model:"deepseek/deepseek-v3.2",
+    max_tokens:2000
+  });
+  return r?.message?.content || "AI_ERROR";
+}catch{
+  return "AI_ERROR";
+}
+}
+
+startBtn.onclick=async()=>{
+  const file=fileInput.files[0];
+  if(!file){alert("Select TXT file");return;}
+
+  stopFlag=false;
+  corrected=[];
+  logBox.innerHTML="";
+  bar.style.width="0%";
+  downloadLink.textContent="";
+  startBtn.disabled=true;
+  stopBtn.disabled=false;
+
+  let text=clean(await file.text());
+  const chunks=splitChunks(text,parseInt(chunkSizeInput.value)||2000);
+  const delay=parseInt(delayInput.value)||1200;
+
+  log(`Total chunks: ${chunks.length}`,"info");
+
+  for(let i=0;i<chunks.length;i++){
+    if(stopFlag) break;
+    status.textContent=`Processing chunk ${i+1}/${chunks.length}`;
+    bar.style.width=((i/chunks.length)*100).toFixed(1)+"%";
+
+    let out="AI_ERROR";
+    for(let a=1;a<=3;a++){
+      log(`Chunk ${i+1} attempt ${a}`,"info");
+      out=await sendToAI(chunks[i]);
+      if(out!=="AI_ERROR") break;
+      await new Promise(r=>setTimeout(r,1000));
+    }
+
+    if(out==="AI_ERROR") out=`[FAILED CHUNK ${i+1}]`;
+    corrected.push(out);
+    log(out,"ok");
+
+    await new Promise(r=>setTimeout(r,delay));
+  }
+
+  status.textContent="Merging output";
+  bar.style.width="100%";
+
+  const finalText=corrected.join("\n\n");
+  const blob=new Blob([finalText],{type:"text/plain"});
+  const url=URL.createObjectURL(blob);
+
+  downloadLink.href=url;
+  downloadLink.download=file.name.replace(".txt","")+"_corrected.txt";
+  downloadLink.textContent="Download Corrected File";
+
+  log("Processing completed successfully","ok");
+  startBtn.disabled=false;
+  stopBtn.disabled=true;
+};
+
+stopBtn.onclick=()=>{
+  stopFlag=true;
+  stopBtn.disabled=true;
+  log("STOP requested by user","err");
+};
+})();
+</script>
+</body>
 </html>
 
